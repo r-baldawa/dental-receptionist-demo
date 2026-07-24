@@ -44,6 +44,10 @@ Handles all appointment booking for new and existing patients.
 
 **When routed here:** any appointment booking intent, returning or new patient.
 
+**Appointment types:** `appointment_type` is not free text — the agent picks from a fixed catalogue of 11 real Atlas Dental appointment types defined in `booking_prompt.md` (e.g. `"Dental Cleaning"`, `"Complete Oral Exam and Cleaning (for New Patients)"`), each with its own duration. That exact string drives both the Google Calendar event length (`google_calendar.py::_DURATION_MINUTES`) and the text shown in the confirmation email — the agent is instructed never to invent or reword a type, since anything not in the catalogue silently falls back to a 30-minute default.
+
+**Current-date grounding:** LLMs have no innate sense of "today." `booking_agent` (and `triage_agent`, for business-hours reasoning) inject the real current date/time in `America/Toronto` via `src/integrations/clock.py` into the system prompt on every turn — without this, the agent will infer a plausible-looking but wrong date from training data when a patient says "next Thursday."
+
 ---
 
 ### triage_agent
@@ -87,7 +91,7 @@ Answers pricing and clinic knowledge questions that come up mid-conversation.
 | `get_no_show_history` | Returns no-show count; count ≥ 2 sets `requires_deposit = True` |
 | `record_consent_acknowledgement` | Records that PHIPA was explained in chat. **Not a signature.** |
 | `create_appointment` | Inserts appointment row. Idempotency: checks for duplicate patient+datetime first |
-| `book_calendar_event` | Creates Google Calendar event. Idempotency: skips if `calendar_event_id` already set |
+| `book_calendar_event` | Creates Google Calendar event with `sendUpdates="all"` so the patient actually gets the invite email. Duration looked up from `appointment_type` (see catalogue above). Idempotency: skips if `calendar_event_id` already set |
 | `send_appointment_confirmation` | Sends confirmation email. Idempotency: skips if `confirmation_email_sent = True` |
 | `flag_for_human_review` | Writes to `audit_log`, flips `registration_status = needs_human_review` |
 
@@ -148,6 +152,7 @@ Every node reads and writes from a single shared state object. Key fields:
 | `requires_human_handoff` | `bool` | Sticks the conversation in `exceptions` once set |
 | `calendar_event_id` | `str` | Idempotency guard for calendar booking |
 | `confirmation_email_sent` | `bool` | Idempotency guard for confirmation email |
+| `last_booking_summary` | `dict` | Set the same turn `confirmation_email_sent` flips to `True`; `runner.py` diffs before/after state to detect a just-completed booking and surfaces this as the structured confirmation card in the UI |
 | `agent_response` | `dict` | `{text, quick_replies}` — the turn's output for the UI |
 
 State persists across turns via `MemorySaver` (in-session only). Each session is identified by a `thread_id`.
@@ -214,6 +219,7 @@ These are structural constraints — an agent prompt can drift, a function signa
 | Database | Supabase (Postgres) |
 | Email | Gmail SMTP via OAuth2 (XOAUTH2) |
 | Calendar | Google Calendar API |
-| Chat UI | Streamlit (`app.py`) with token-level streaming |
+| Chat UI | Streamlit (`app.py`) — token-level streaming, live per-step status updates during tool calls, structured booking confirmation card |
 | Receptionist UI | Streamlit (`src/webapp/`) |
+| Hosting | Streamlit Community Cloud |
 | Tests | pytest (77 tests, `pytest tests/`) |

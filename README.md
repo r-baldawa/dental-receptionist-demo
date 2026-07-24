@@ -2,8 +2,15 @@
 
 A production-grade AI receptionist for Atlas Dental (Toronto). Built with LangGraph + Claude API, it handles appointment booking, patient registration, dental emergency triage, receivables follow-up, and FAQ — end-to-end, through a Streamlit chat interface.
 
-Try - https://dental-receptionist-demo.streamlit.app/
-Reachout to r.baldawa17@gmail.com for passcode.
+**Live demo:** https://dental-receptionist-demo.streamlit.app/ — reach out to r.baldawa17@gmail.com for the access passcode.
+
+---
+
+## Why This Exists
+
+A dental front desk spends a large share of its day on a small set of repetitive, structured conversations: booking, intake paperwork, "what does this cost," and triaging urgent calls. Those conversations are high-volume but low-ambiguity — which makes them a good fit for an agent, provided the risky parts (consent, emergencies, billing communication) are handled by rules a model can't talk itself out of, not by a prompt hoping the model stays disciplined over a long conversation.
+
+That's the design bet this project makes: **non-negotiables live in code, not prompts.** An LLM picks the words; it never gets to decide whether an emergency alert fires, whether a consent form counts as signed, or whether a payment reminder goes to more than one patient at a time. See [Non-Negotiables](#non-negotiables) below for exactly how that's enforced.
 
 ---
 
@@ -59,99 +66,75 @@ Full detail: [`ARCHITECTURE.md`](ARCHITECTURE.md)
 | Database | Supabase (Postgres) |
 | Email | Gmail SMTP via OAuth2 |
 | Calendar | Google Calendar API |
-| Chat UI | Streamlit (`app.py`) |
+| Chat UI | Streamlit (`app.py`) — live per-step status updates, structured booking confirmation cards |
 | Receptionist UI | Streamlit (`src/webapp/`) |
+| Hosting | Streamlit Community Cloud |
 | Tests | pytest (77 tests) |
 
 ---
 
-## Setup
+## Project Structure
 
-### 1. Clone and install
-
-```bash
-git clone https://github.com/r-baldawa/Dental-Receptionist.git
-cd Dental-Receptionist
-python -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
 ```
-
-### 2. Configure environment
-
-```bash
-cp .env.example .env
+├── app.py                              # Patient-facing Streamlit chat UI — the only file most
+│                                        #   changes to "how it looks/feels" touch
+├── cli.py                              # Terminal harness for testing agent responses without the UI
+├── schema.sql                          # Supabase database schema — source of truth for all tables
+├── requirements.txt                    # Python dependencies
+├── .env.example                        # Every credential/config value the app needs, undocumented
+│                                        #   values left blank — copy to .env for local dev
+├── ARCHITECTURE.md                     # Full architecture reference: message flow, all tools per
+│                                        #   agent, shared state fields, DB schema
+│
+├── atlas_dental_clinic_knowledge.md    # Clinic facts (hours, services, staff) — the ONLY source
+│                                        #   the FAQ agent is allowed to draw from
+├── dental_pricing_faq_knowledge_base.json  # Pricing ranges, insurance types, escalation triggers
+│
+├── src/
+│   ├── agents/
+│   │   ├── runner.py                   # Single external entry point — every caller (Streamlit,
+│   │   │                                #   CLI) goes through invoke_agent()/stream_agent() here,
+│   │   │                                #   never through the manager or a specialist directly
+│   │   ├── safety_precheck.py          # Deterministic emergency scan — runs before the manager
+│   │   │                                #   sees the message, on every single turn, no exceptions
+│   │   ├── manager.py                  # Haiku router — reads state, picks one specialist per turn
+│   │   ├── booking_agent.py            # New/existing patient booking, the largest specialist
+│   │   ├── triage_agent.py             # Patient-facing follow-up after an emergency alert fires
+│   │   ├── exceptions_agent.py         # Identity mismatches, declined consent, anything escalated
+│   │   ├── faq_agent.py                # Pricing + clinic knowledge, interrupts and returns
+│   │   ├── state.py                    # AtlasDentalState TypedDict — the single object every
+│   │   │                                #   node reads from and writes to
+│   │   ├── prompts/                    # One markdown system prompt per agent — read these to
+│   │   │                                #   understand exactly what each agent is told to do
+│   │   └── tools/                      # LangChain @tool definitions, one file per concern —
+│   │       ├── consent.py              #   this is where hard rules actually live (e.g. there is
+│   │       ├── emergency.py            #   no sign_consent tool, anywhere, on purpose)
+│   │       ├── escalation.py
+│   │       ├── identity.py
+│   │       ├── knowledge.py
+│   │       ├── patient_data.py
+│   │       └── scheduling.py
+│   ├── integrations/                   # Thin wrappers around external services — nothing agent-
+│   │   ├── clock.py                    #   specific lives here, just API calls
+│   │   ├── clinic_knowledge.py
+│   │   ├── pricing_kb.py
+│   │   ├── supabase_client.py
+│   │   └── gmail_smtp.py
+│   │   └── google_calendar.py
+│   └── webapp/                         # Staff-facing tools — no conversational agent involved
+│       ├── consent_view.py             # Check-in & consent capture (staff, in-person)
+│       └── receivables_view.py         # Payment follow-up (staff)
+│
+└── tests/                              # pytest suite (77 tests) — see `test_non_negotiables.py`
+    ├── conftest.py                     #   specifically for how the hard rules are verified
+    ├── test_safety_precheck.py
+    ├── test_identity.py
+    ├── test_patient_data.py
+    ├── test_scheduling.py
+    ├── test_receivables.py
+    ├── test_knowledge.py
+    └── test_non_negotiables.py
 ```
-
-Edit `.env` and fill in all required values:
-
-| Variable | Description |
-|---|---|
-| `ANTHROPIC_API_KEY` | Claude API key |
-| `SUPABASE_URL` | Supabase project URL |
-| `SUPABASE_SERVICE_ROLE_KEY` | Supabase service role key (backend only, never exposed to browser) |
-| `GOOGLE_CLIENT_ID` | Google OAuth2 client ID |
-| `GOOGLE_CLIENT_SECRET` | Google OAuth2 client secret |
-| `GOOGLE_REFRESH_TOKEN` | OAuth2 refresh token (for Gmail + Calendar) |
-| `GMAIL_SENDER_ADDRESS` | Gmail address used to send emails |
-| `GOOGLE_CALENDAR_ID` | Calendar ID for appointment booking |
-| `CLINIC_EMERGENCY_ALERT_EMAIL` | Email address that receives emergency alerts |
-| `CLINIC_ADMIN_EMAIL` | Email for payment reminders and audit escalations |
-
-### 3. Set up the database
-
-Apply the schema to your Supabase project:
-
-```bash
-# Paste schema.sql into the Supabase SQL editor, or use the CLI:
-supabase db push  # if using Supabase CLI with local config
-```
-
-Tables: `patients`, `appointments`, `consent_records`, `payment_records`, `audit_log`
-
----
-
-## Running
-
-### Patient-facing chat
-
-```bash
-streamlit run app.py
-```
-
-Opens at `http://localhost:8501`
-
-### Receptionist — Check-in & Consent
-
-```bash
-streamlit run src/webapp/consent_view.py
-```
-
-Search patients, view pre-filled chat data, sign consent forms in person (tablet).
-
-### Receptionist — Receivables
-
-```bash
-streamlit run src/webapp/receivables_view.py
-```
-
-View outstanding/overdue balances, send individually addressed payment reminder emails.
-
-### CLI (for testing agent responses directly)
-
-```bash
-python cli.py
-```
-
----
-
-## Tests
-
-```bash
-pytest
-```
-
-77 tests covering safety pre-check, identity resolution, patient data, scheduling idempotency, receivables (PHIPA compliance), knowledge base, and structural non-negotiables.
 
 ---
 
@@ -170,58 +153,6 @@ These are enforced in code, not just in prompts:
 
 ---
 
-## Project Structure
-
-```
-├── app.py                              # Patient-facing Streamlit chat UI
-├── cli.py                              # CLI for local testing
-├── schema.sql                          # Supabase database schema
-├── requirements.txt
-├── .env.example                        # Credential template
-├── ARCHITECTURE.md                     # Full architecture reference
-│
-├── atlas_dental_clinic_knowledge.md    # Clinic facts (hours, services, staff)
-├── dental_pricing_faq_knowledge_base.json  # Pricing ranges and FAQ
-│
-├── src/
-│   ├── agents/
-│   │   ├── runner.py                   # Single external entry point
-│   │   ├── safety_precheck.py          # Deterministic emergency scan (no LLM)
-│   │   ├── manager.py                  # Haiku router
-│   │   ├── booking_agent.py
-│   │   ├── triage_agent.py
-│   │   ├── exceptions_agent.py
-│   │   ├── faq_agent.py
-│   │   ├── state.py                    # AtlasDentalState TypedDict
-│   │   ├── prompts/                    # Markdown system prompts per agent
-│   │   └── tools/                      # LangChain @tool definitions
-│   │       ├── consent.py
-│   │       ├── emergency.py
-│   │       ├── escalation.py
-│   │       ├── identity.py
-│   │       ├── knowledge.py
-│   │       ├── patient_data.py
-│   │       └── scheduling.py
-│   ├── integrations/
-│   │   ├── supabase_client.py
-│   │   └── gmail_smtp.py
-│   └── webapp/
-│       ├── consent_view.py             # Check-in & consent capture (staff)
-│       └── receivables_view.py         # Payment follow-up (staff)
-│
-└── tests/                              # pytest suite (77 tests)
-    ├── conftest.py
-    ├── test_safety_precheck.py
-    ├── test_identity.py
-    ├── test_patient_data.py
-    ├── test_scheduling.py
-    ├── test_receivables.py
-    ├── test_knowledge.py
-    └── test_non_negotiables.py
-```
-
----
-
 ## Knowledge Sources
 
 The agent never has clinic facts hardcoded in prompts. All facts come from two files at query time:
@@ -236,4 +167,58 @@ The agent never has clinic facts hardcoded in prompts. All facts come from two f
 - `.env` and `client_secret.json` are in `.gitignore` — never commit them
 - `SUPABASE_SERVICE_ROLE_KEY` is backend-only; it is never passed to the browser
 - PHIPA compliance: one individually addressed email per patient — enforced structurally, not by prompt
-# Dental-Receptionist
+
+---
+
+## Local Development
+
+The live demo above covers most needs — clone and run locally only if you're changing code.
+
+<details>
+<summary>Setup, running, and tests</summary>
+
+### Setup
+
+```bash
+git clone https://github.com/r-baldawa/dental-receptionist-demo.git
+cd dental-receptionist-demo
+python -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+cp .env.example .env   # then fill in all values — see the table below
+```
+
+| Variable | Description |
+|---|---|
+| `ANTHROPIC_API_KEY` | Claude API key |
+| `SUPABASE_URL` | Supabase project URL |
+| `SUPABASE_SERVICE_ROLE_KEY` | Supabase service role key (backend only, never exposed to browser) |
+| `GOOGLE_CLIENT_ID` | Google OAuth2 client ID |
+| `GOOGLE_CLIENT_SECRET` | Google OAuth2 client secret |
+| `GOOGLE_REFRESH_TOKEN` | OAuth2 refresh token (for Gmail + Calendar) |
+| `GMAIL_SENDER_ADDRESS` | Gmail address used to send emails |
+| `GOOGLE_CALENDAR_ID` | Calendar ID for appointment booking |
+| `CLINIC_EMERGENCY_ALERT_EMAIL` | Email address(es) that receive emergency alerts (comma-separated for multiple) |
+| `CLINIC_FRONT_DESK_BCC_EMAIL` | BCC'd on booking confirmations |
+| `APP_ACCESS_PASSPHRASE` | Optional shared passcode gate for the patient-facing chat |
+
+Apply `schema.sql` to your Supabase project (paste into the SQL editor, or `supabase db push`). Tables: `patients`, `appointments`, `consent_records`, `payment_records`, `audit_log`.
+
+### Running
+
+```bash
+streamlit run app.py                        # patient-facing chat — http://localhost:8501
+streamlit run src/webapp/consent_view.py     # staff: check-in & consent
+streamlit run src/webapp/receivables_view.py # staff: payment follow-up
+python cli.py                                # terminal harness, no UI
+```
+
+### Tests
+
+```bash
+pytest
+```
+
+77 tests covering safety pre-check, identity resolution, patient data, scheduling idempotency, receivables (PHIPA compliance), knowledge base, and structural non-negotiables.
+
+</details>
