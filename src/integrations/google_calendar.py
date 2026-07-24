@@ -74,7 +74,12 @@ def create_appointment_event(
         },
     }
 
-    result = _get_service().events().insert(calendarId=calendar_id, body=event).execute()
+    result = (
+        _get_service()
+        .events()
+        .insert(calendarId=calendar_id, body=event, sendUpdates="all")
+        .execute()
+    )
     event_id = result.get("id")
     print(f"[google_calendar] created event {event_id!r} for {patient_name!r}")
     return event_id
