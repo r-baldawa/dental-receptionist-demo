@@ -24,7 +24,9 @@ def create_appointment(
 
     Args:
         patient_id: The patient's UUID
-        appointment_type: Type of appointment, e.g. "checkup", "cleaning", "filling", "extraction", "consultation"
+        appointment_type: Exact appointment-type string from booking_prompt.md's Appointment
+            Types table (e.g. "Dental Cleaning", "Complete Oral Exam (Adult)") — this exact
+            string drives both calendar event duration and the confirmation email
         appointment_datetime: ISO 8601 datetime, e.g. "2026-07-15T14:00:00" (America/Toronto timezone assumed)
         provider_id: Provider identifier — use "default" until multi-provider mapping is confirmed
     """
@@ -106,12 +108,15 @@ def book_calendar_event(
         return {"success": True, "event_id": existing.data[0]["calendar_event_id"], "already_existed": True}
 
     from src.integrations.google_calendar import create_appointment_event
-    event_id = create_appointment_event(
-        patient_name=patient_name,
-        patient_email=patient_email,
-        appointment_type=appointment_type,
-        start_datetime=appointment_datetime,
-    )
+    try:
+        event_id = create_appointment_event(
+            patient_name=patient_name,
+            patient_email=patient_email,
+            appointment_type=appointment_type,
+            start_datetime=appointment_datetime,
+        )
+    except Exception as exc:
+        return {"success": False, "error": f"Calendar event creation failed: {exc}"}
 
     if not event_id:
         return {"success": False, "error": "Calendar event creation failed"}
@@ -160,16 +165,19 @@ def send_appointment_confirmation(
         f"Hi {patient_name},\n\n"
         f"Your appointment has been booked at Atlas Dental.\n\n"
         f"Details:\n"
-        f"  Type: {appointment_type.replace('_', ' ').title()}\n"
+        f"  Type: {appointment_type}\n"
         f"  Date/Time: {appointment_datetime}\n"
-        f"  Location: 123 Main Street, Toronto, ON (please check atlas-dental.ca for current address)\n\n"
+        f"  Location: Atlas Dental, 2 Bloor St W, Suite 1903, Toronto, ON M4W 3E2\n\n"
         f"Please arrive 10 minutes early for your first visit.\n"
         f"To reschedule or cancel, reply to this email or call our front desk.\n\n"
         f"See you soon!\n"
         f"Atlas Dental Team"
     )
 
-    success = send_email(to=patient_email, subject=subject, body=body, bcc=bcc)
+    try:
+        success = send_email(to=patient_email, subject=subject, body=body, bcc=bcc)
+    except Exception as exc:
+        return {"success": False, "already_sent": False, "error": f"Email send failed: {exc}"}
 
     if success:
         client.table("appointments").update({"confirmation_email_sent": True}).eq("appointment_id", appointment_id).execute()

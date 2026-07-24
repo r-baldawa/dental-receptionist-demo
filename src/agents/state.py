@@ -38,6 +38,10 @@ class AtlasDentalState(TypedDict):
     scheduling: dict
     calendar_event_id: Optional[str]
     confirmation_email_sent: bool
+    # Set the same turn confirmation_email_sent flips to True; used to render
+    # a structured confirmation card. Not cleared afterward — runner.py detects
+    # the False->True transition rather than relying on absence/presence.
+    last_booking_summary: Optional[dict]
 
     # Human handoff
     requires_human_handoff: bool

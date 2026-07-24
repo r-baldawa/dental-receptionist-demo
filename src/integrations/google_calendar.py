@@ -12,15 +12,21 @@ from googleapiclient.discovery import build
 
 load_dotenv()
 
-# ASSUMPTION (plan.md §7): default durations — confirm exact values with clinic.
+# Real clinic appointment-type catalogue and durations, from Atlas Dental's booking widget.
+# Keys are lowercased for lookup; see booking_prompt.md for the canonical display strings
+# the agent must use verbatim so this mapping resolves correctly.
 _DURATION_MINUTES = {
-    "checkup": 30,
-    "cleaning": 30,
-    "consultation": 30,
-    "filling": 60,
-    "extraction": 60,
-    "root_canal": 90,
-    "crown": 60,
+    "emergency dental visit": 45,
+    "free phone consultation - general inquiries": 15,
+    "free in-person consultation - orthodontics only": 30,
+    "dental cleaning": 60,
+    "complete oral exam (adult)": 45,
+    "complete oral exam and cleaning (for new patients)": 90,
+    "children's complete oral exam & cleaning": 60,
+    "teeth whitening, in-office whitening": 60,
+    "dental cleaning and in-office teeth whitening": 120,
+    "cbct (3d x-ray) scan": 15,
+    "night guard scan": 15,
     "default": 30,
 }
 
@@ -50,8 +56,9 @@ def create_appointment_event(
 ) -> str | None:
     """Create a calendar event; return the event_id or None on failure.
 
-    ASSUMPTION (plan.md §7): default duration 30 min for checkup/cleaning,
-    60 min for procedures. Flag back: confirm exact per-type durations with clinic.
+    Duration is looked up from _DURATION_MINUTES by appointment_type (exact match
+    against the clinic's real appointment-type catalogue); falls back to 30 min for
+    anything unrecognized.
 
     ASSUMPTION (plan.md §7): single default calendar when provider_calendar_id is None.
     Flag back: multi-provider calendar mapping needed once staff roster is confirmed.

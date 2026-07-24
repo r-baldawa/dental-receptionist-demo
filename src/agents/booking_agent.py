@@ -5,6 +5,7 @@ Full tool-calling loop: identity lookup → DB writes → calendar → email.
 import json
 import os
 import pathlib
+from datetime import datetime
 from typing import Optional
 
 from langchain_anthropic import ChatAnthropic
@@ -54,6 +55,16 @@ BOOKING_TOOLS: list[BaseTool] = [
 ]
 
 _TOOL_MAP = {t.name: t for t in BOOKING_TOOLS}
+
+# Real current address per atlas_dental_clinic_knowledge.md — do not invent/guess.
+CLINIC_LOCATION = "Atlas Dental, 2 Bloor St W, Suite 1903, Toronto, ON M4W 3E2"
+
+
+def _humanize_datetime(iso_datetime: str) -> str:
+    """'2026-07-27T14:00:00' -> 'Monday, July 27, 2026 at 2:00 PM'."""
+    dt = datetime.fromisoformat(iso_datetime)
+    hour_12 = dt.strftime("%I").lstrip("0") or "12"
+    return dt.strftime(f"%A, %B %d, %Y at {hour_12}:%M %p")
 
 
 def _load_prompt() -> str:
@@ -123,8 +134,8 @@ def booking_node(state: AtlasDentalState, config: RunnableConfig | None = None) 
 
     messages = [SystemMessage(content=system_content)] + list(state.get("messages") or [])
 
-    # Track tool results for state extraction after the loop
-    tool_results_log: list[tuple[str, dict]] = []
+    # Track tool calls (name, args, result) for state extraction after the loop
+    tool_results_log: list[tuple[str, dict, dict]] = []
 
     # Tool-calling loop: run until LLM produces a plain text response
     while True:
@@ -144,7 +155,7 @@ def booking_node(state: AtlasDentalState, config: RunnableConfig | None = None) 
 
             # Normalise to dict for logging and serialisation
             result_dict = result if isinstance(result, dict) else {"result": str(result)}
-            tool_results_log.append((tc["name"], result_dict))
+            tool_results_log.append((tc["name"], tc["args"], result_dict))
             tool_msgs.append(
                 ToolMessage(
                     content=json.dumps(result_dict),
@@ -155,7 +166,7 @@ def booking_node(state: AtlasDentalState, config: RunnableConfig | None = None) 
 
     # Extract state updates from tool results
     state_delta: dict = {}
-    for tool_name, result in tool_results_log:
+    for tool_name, args, result in tool_results_log:
         if tool_name == "lookup_patient_by_contact":
             if result.get("conflict"):
                 state_delta["identity_mismatch"] = True
@@ -175,6 +186,13 @@ def booking_node(state: AtlasDentalState, config: RunnableConfig | None = None) 
 
         elif tool_name == "send_appointment_confirmation" and result.get("success"):
             state_delta["confirmation_email_sent"] = True
+            state_delta["last_booking_summary"] = {
+                "name": args.get("patient_name"),
+                "service": args.get("appointment_type", ""),
+                "datetime": _humanize_datetime(args["appointment_datetime"]),
+                "location": CLINIC_LOCATION,
+                "footer": f"Confirmation email and calendar invite sent to {args.get('patient_email')}",
+            }
 
         elif tool_name == "flag_for_human_review":
             state_delta["requires_human_handoff"] = True

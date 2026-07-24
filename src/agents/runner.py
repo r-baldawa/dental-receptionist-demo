@@ -70,16 +70,44 @@ def _get_graph():
     return _graph
 
 
+# Human-readable labels for tool calls surfaced live via the status rail (app.py).
+# Fallback to a generic label for any tool not listed here.
+_TOOL_STEP_LABELS = {
+    "lookup_patient_by_contact": "Looking up your file…",
+    "create_new_patient": "Setting up your patient record…",
+    "update_patient_insurance": "Saving insurance details…",
+    "update_medical_history": "Saving medical history…",
+    "update_dental_history": "Saving dental history…",
+    "update_guardian_info": "Saving guardian details…",
+    "get_patient_balance": "Checking your account balance…",
+    "get_no_show_history": "Checking appointment history…",
+    "record_consent_acknowledgement": "Recording consent…",
+    "create_appointment": "Booking your appointment…",
+    "book_calendar_event": "Checking calendar availability…",
+    "send_appointment_confirmation": "Sending confirmation email…",
+    "flag_for_human_review": "Flagging this for staff review…",
+    "send_emergency_contact_followup": "Sending your details to our team…",
+    "query_pricing_kb": "Looking up pricing…",
+    "query_clinic_knowledge": "Checking clinic info…",
+}
+
+
 def stream_agent(message: str, thread_id: str, _meta: dict | None = None):
     """
-    Generator that yields text chunks from the specialist agent.
-    Populates _meta["quick_replies"] (if provided) after the stream completes.
+    Generator that yields ("text", chunk) and ("status", label) tuples.
+
+    ("text", ...) chunks are the user-facing response — accumulate and display these.
+    ("status", ...) tuples are transient live-progress labels for tool calls in
+    progress (e.g. "Checking calendar availability…") — show, then replace/clear;
+    never accumulate them into the displayed text.
+
+    Populates _meta["quick_replies"] and, when a booking is confirmed this turn,
+    _meta["summary"] (see booking_agent.py's last_booking_summary) after the stream
+    completes.
 
     Within a booking turn the LLM may run several times (tool-calling loop). We only
-    want to show the FINAL user-facing response, not intermediate tool-calling text.
-    Strategy: buffer chunks per LLM generation; flush only when stop_reason=="end_turn"
-    (plain text response); discard when stop_reason=="tool_use" (intermediate call).
-    Also filters out complete AIMessage state-update events which would duplicate text.
+    want to show the FINAL user-facing response as text, but tool_use turns are what
+    drive the live status rail rather than being silently discarded.
     """
     from langchain_core.messages import AIMessageChunk
 
@@ -88,6 +116,10 @@ def stream_agent(message: str, thread_id: str, _meta: dict | None = None):
     token_stream_nodes = {"booking", "triage", "exceptions"}
     faq_text: str | None = None
     chunk_buffer: list = []
+    merged_chunk = None
+    had_confirmation_before = bool(
+        (graph.get_state(config).values or {}).get("confirmation_email_sent")
+    )
 
     def _extract_text_from_chunk(c) -> str:
         content = c.content if hasattr(c, "content") else ""
@@ -116,6 +148,7 @@ def stream_agent(message: str, thread_id: str, _meta: dict | None = None):
                 continue
 
             chunk_buffer.append(chunk)
+            merged_chunk = merged_chunk + chunk if merged_chunk is not None else chunk
 
             stop_reason = (chunk.response_metadata or {}).get("stop_reason")
             if stop_reason == "end_turn":
@@ -124,11 +157,20 @@ def stream_agent(message: str, thread_id: str, _meta: dict | None = None):
                 full = "".join(_extract_text_from_chunk(c) for c in chunk_buffer)
                 clean = _QR_RE.sub("", full).strip()
                 if clean:
-                    yield clean
+                    yield ("text", clean)
                 chunk_buffer.clear()
+                merged_chunk = None
+            elif stop_reason == "tool_use":
+                # Intermediate call — surface a live status label instead of the
+                # (usually empty/partial) text, then discard the text buffer.
+                for tc in (merged_chunk.tool_calls or []) if merged_chunk else []:
+                    label = _TOOL_STEP_LABELS.get(tc["name"], "Working on it…")
+                    yield ("status", label)
+                chunk_buffer.clear()
+                merged_chunk = None
             elif stop_reason:
-                # tool_use or other — intermediate call, discard
                 chunk_buffer.clear()
+                merged_chunk = None
 
         elif kind == "updates":
             for node, updates in data.items():
@@ -141,7 +183,15 @@ def stream_agent(message: str, thread_id: str, _meta: dict | None = None):
                     _meta["quick_replies"] = resp["quick_replies"]
 
     if faq_text:
-        yield faq_text
+        yield ("text", faq_text)
+
+    if _meta is not None:
+        final_state = graph.get_state(config).values or {}
+        confirmed_now = bool(final_state.get("confirmation_email_sent"))
+        if confirmed_now and not had_confirmation_before:
+            summary = final_state.get("last_booking_summary")
+            if summary:
+                _meta["summary"] = summary
 
 
 def invoke_agent(message: str, thread_id: str) -> dict:
