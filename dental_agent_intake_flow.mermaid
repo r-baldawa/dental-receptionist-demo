@@ -1,0 +1,30 @@
+flowchart TD
+    A[Start: Inbound Call / Chat] --> B[Greeting & Collect Email or Phone]
+    B --> C[Identity Lookup: Match on Email/Phone]
+    C --> C1{Match Found?}
+
+    C1 -->|Yes| D[Confirm Name + DOB<br/>secondary check, not primary lookup]
+    D --> D1{Confirmed?}
+    D1 -->|No Match| F
+    D1 -->|Confirmed| Q[Scheduling Preferences]
+
+    C1 -->|No| F{Emergency Indicators?}
+    F -->|Yes: severe pain, swelling, trauma, bleeding| G[Immediate Triage Script]
+    G --> H[Escalate: Transfer to Live Staff / Emergency Line]
+
+    F -->|No - routine| I[PHIPA Consent Capture]
+    I -->|Declined| J[Explain Limits Without Consent + Offer Callback]
+    I -->|Given| K[Demographics Capture]
+
+    K --> L[Insurance & Billing Info]
+    L --> M[Medical History: Allergies, Meds, Conditions]
+    M --> N[Dental History: Reason for Visit, Last Dentist]
+    N --> O{Patient Under 18?}
+
+    O -->|Yes| P[Guardian Identity + Consent Capture]
+    O -->|No| Q
+
+    P --> Q
+    Q --> R[Confirm Appointment & Read-Back Summary]
+    R --> S[Send Confirmation Email]
+    S --> T[End / Close Loop]

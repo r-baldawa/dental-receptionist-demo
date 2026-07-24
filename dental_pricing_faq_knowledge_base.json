@@ -1,0 +1,383 @@
+{
+  "knowledge_base_name": "Dental Clinic Pricing & Cost FAQ — Agent Knowledge Base",
+  "currency": "CAD",
+  "region": "Ontario, Canada",
+  "fee_guide_basis": "Modeled on the Ontario Dental Association (ODA) Suggested Fee Guide. This is a reference benchmark, not a mandatory price list — actual clinic fees vary by location, dentist, and case complexity.",
+  "source_pattern_reference": "Phrasing and structure adapted from Atlas Dental Toronto's 'Cost of X' FAQ format (atlasdental.ca), restructured for intent-matching by an AI agent.",
+  "last_updated": "2026-06-27",
+
+  "agent_behavior_rules": [
+    "Always present prices as an ESTIMATE or RANGE, never as a guaranteed final cost. Use phrasing like 'typically costs around' or 'usually ranges from'.",
+    "Always note that final pricing depends on the dentist's in-person assessment, complexity, and number of surfaces/canals/sites involved where applicable.",
+    "Never tell a patient a service IS or IS NOT covered by their insurance — only say it is 'commonly considered a basic/major/cosmetic/supplementary service' and recommend they confirm with their insurance provider or that the clinic can submit a predetermination.",
+    "If the patient mentions pain, swelling, trauma, or 'emergency', prioritize routing to the emergency_exam or tooth_extraction / incision_drainage entries and flag for urgent booking — do not let cost questions delay triage.",
+    "If a query involves a cost combination not covered by a single entry (e.g., 'implant + crown + bone graft'), surface each relevant entry separately rather than guessing a combined total.",
+    "If the requested procedure isn't in this knowledge base, say so plainly and offer to have the clinic provide a personalized quote rather than fabricating a number.",
+    "Cosmetic procedures (veneers, in-office/take-home whitening) should always include the note that they are typically NOT covered by insurance.",
+    "When a price has '+ Dental Lab Fee' or '+ Dental Materials Expense' noted, always mention that the quoted number is not all-inclusive."
+  ],
+
+  "faq_items": [
+    {
+      "id": "new_patient_exam",
+      "category": "Diagnosis",
+      "question_patterns": [
+        "How much does a new patient exam cost?",
+        "What's the price of a first dental checkup?",
+        "How much is an initial consultation?",
+        "Do you charge for a first visit?",
+        "What does a complete oral exam cost?"
+      ],
+      "price_range": { "low": 96, "high": 191, "note": "plus cost of x-rays" },
+      "insurance_coverage": "basic — typically covered to plan maximum",
+      "details": "Price depends on dentition type (primary, mixed, or permanent teeth)."
+    },
+    {
+      "id": "emergency_exam",
+      "category": "Diagnosis",
+      "question_patterns": [
+        "How much does an emergency dental visit cost?",
+        "I'm in pain, what will an emergency exam cost?",
+        "What's the fee for an urgent dental appointment?",
+        "Do you charge extra for emergency visits?"
+      ],
+      "price_range": { "low": 55, "high": 334, "note": "varies with number of x-rays needed; can be as low as $55 with none, up to ~$334 with bitewing + periapical + panoramic x-rays" },
+      "insurance_coverage": "basic — typically covered to plan maximum",
+      "triage_flag": true
+    },
+    {
+      "id": "digital_xrays",
+      "category": "Diagnosis",
+      "question_patterns": [
+        "How much do dental x-rays cost?",
+        "What's the price of a digital x-ray?",
+        "How much is a panoramic x-ray?",
+        "Do x-rays cost extra?"
+      ],
+      "price_range": { "low": 43, "high": 96, "note": "depends on number of images; single bitewing/periapical $43, full series $173-187, panoramic $86" },
+      "insurance_coverage": "basic — typically covered to plan maximum"
+    },
+    {
+      "id": "cbct_scan",
+      "category": "Diagnosis",
+      "question_patterns": [
+        "How much does a CBCT scan cost?",
+        "What's the price of a 3D dental scan?",
+        "How much is a cone beam CT?"
+      ],
+      "price_range": { "low": 265, "high": 450, "note": "depends on scan field size; +$75 for expedited reports" },
+      "insurance_coverage": "supplementary — may or may not be covered"
+    },
+    {
+      "id": "teeth_cleaning",
+      "category": "Prevention",
+      "question_patterns": [
+        "How much does a teeth cleaning cost?",
+        "What's the price of a dental cleaning?",
+        "How much for scaling and polishing?",
+        "Is teeth cleaning covered by insurance?"
+      ],
+      "price_range": { "low": 75, "high": 397, "note": "billed in 15-minute units; a typical 1-hour cleaning is around $264; polishing and fluoride are billed separately" },
+      "insurance_coverage": "basic — typically covered to plan maximum"
+    },
+    {
+      "id": "fluoride_treatment",
+      "category": "Prevention",
+      "question_patterns": [
+        "How much does a fluoride treatment cost?",
+        "What's the price of fluoride varnish?"
+      ],
+      "price_range": { "low": 9, "high": 39 },
+      "insurance_coverage": "basic — typically covered to plan maximum"
+    },
+    {
+      "id": "night_guard",
+      "category": "Prevention",
+      "question_patterns": [
+        "How much does a night guard cost?",
+        "What's the price of a mouth guard for grinding?"
+      ],
+      "price_range": { "low": 633, "high": 633, "note": "+ dental lab fee" },
+      "insurance_coverage": "basic — typically covered to plan maximum"
+    },
+    {
+      "id": "sports_mouth_guard",
+      "category": "Prevention",
+      "question_patterns": [
+        "How much does a sports mouth guard cost?",
+        "What's the price of a custom athletic mouth guard?"
+      ],
+      "price_range": { "low": 384, "high": 384 },
+      "insurance_coverage": "basic — typically covered to plan maximum"
+    },
+    {
+      "id": "fillings",
+      "category": "Restorative",
+      "question_patterns": [
+        "How much does a filling cost?",
+        "What's the price of a cavity filling?",
+        "How much to fix a chipped tooth?",
+        "Is a filling covered by insurance?"
+      ],
+      "price_range": { "low": 214, "high": 498, "note": "depends on tooth location (front, bicuspid, molar) and number of surfaces" },
+      "insurance_coverage": "basic — typically covered to plan maximum"
+    },
+    {
+      "id": "porcelain_inlay_onlay",
+      "category": "Restorative",
+      "question_patterns": [
+        "How much does a porcelain inlay cost?",
+        "What's the price of a dental onlay?"
+      ],
+      "price_range": { "low": 763, "high": 1417, "note": "+ dental lab fee" },
+      "insurance_coverage": "major restorative — may or may not be covered"
+    },
+    {
+      "id": "dental_crown",
+      "category": "Restorative",
+      "question_patterns": [
+        "How much does a dental crown cost?",
+        "What's the price of a tooth crown?",
+        "Is a crown covered by insurance?"
+      ],
+      "price_range": { "low": 1417, "high": 1517, "note": "+ dental lab fee $250-350; zirconia/ceramic typically least expensive, then porcelain-fused-to-metal, then full metal/gold" },
+      "insurance_coverage": "major restorative — may or may not be covered"
+    },
+    {
+      "id": "veneers",
+      "category": "Restorative",
+      "question_patterns": [
+        "How much do veneers cost?",
+        "What's the price of porcelain veneers?",
+        "How much for composite bonding/veneers?"
+      ],
+      "price_range": { "low": 540, "high": 1517, "note": "composite/bonding ~$540; porcelain $1417-1517 + dental lab fee" },
+      "insurance_coverage": "cosmetic — typically NOT covered"
+    },
+    {
+      "id": "root_canal",
+      "category": "Endodontics",
+      "question_patterns": [
+        "How much does a root canal cost?",
+        "What's the price of root canal treatment?",
+        "Is a root canal covered by insurance?"
+      ],
+      "price_range": { "low": 757, "high": 1629, "note": "depends on number of canals (1-4+) and complicating factors like calcified canals or retreatment" },
+      "insurance_coverage": "supplementary — may or may not be covered"
+    },
+    {
+      "id": "root_canal_retreatment",
+      "category": "Endodontics",
+      "question_patterns": [
+        "How much does it cost to redo a root canal?",
+        "What's the price of root canal retreatment?"
+      ],
+      "price_range": { "low": 901, "high": 1629 },
+      "insurance_coverage": "supplementary — may or may not be covered"
+    },
+    {
+      "id": "gum_graft",
+      "category": "Periodontics",
+      "question_patterns": [
+        "How much does a gum graft cost?",
+        "What's the price of gum grafting?"
+      ],
+      "price_range": { "low": 1950, "high": 1950, "unit_note": "per tooth site" },
+      "insurance_coverage": "supplementary — may or may not be covered"
+    },
+    {
+      "id": "bone_graft",
+      "category": "Periodontics",
+      "question_patterns": [
+        "How much does a bone graft cost?",
+        "What's the price of dental bone grafting?"
+      ],
+      "price_range": { "low": 2215, "high": 2215 },
+      "insurance_coverage": "supplementary — may or may not be covered"
+    },
+    {
+      "id": "dentures_full",
+      "category": "Prosthodontics",
+      "question_patterns": [
+        "How much do dentures cost?",
+        "What's the price of complete dentures?",
+        "How much for full dentures?"
+      ],
+      "price_range": { "low": 618, "high": 2177, "note": "+ dental lab fee; varies by standard, provisional, or implant-supported overdenture" },
+      "insurance_coverage": "supplementary — may or may not be covered"
+    },
+    {
+      "id": "dentures_partial",
+      "category": "Prosthodontics",
+      "question_patterns": [
+        "How much do partial dentures cost?",
+        "What's the price of a partial denture?"
+      ],
+      "price_range": { "low": 490, "high": 1519, "note": "+ dental lab fee" },
+      "insurance_coverage": "supplementary — may or may not be covered"
+    },
+    {
+      "id": "denture_repair",
+      "category": "Prosthodontics",
+      "question_patterns": [
+        "How much does it cost to repair dentures?",
+        "What's the price of fixing a broken denture?"
+      ],
+      "price_range": { "low": 105, "high": 305, "note": "+ dental lab fee" },
+      "insurance_coverage": "supplementary — may or may not be covered"
+    },
+    {
+      "id": "denture_reline",
+      "category": "Prosthodontics",
+      "question_patterns": [
+        "How much does a denture reline cost?",
+        "What's the price of relining dentures?"
+      ],
+      "price_range": { "low": 335, "high": 463 },
+      "insurance_coverage": "supplementary — may or may not be covered"
+    },
+    {
+      "id": "dental_bridge",
+      "category": "Prosthodontics",
+      "question_patterns": [
+        "How much does a dental bridge cost?",
+        "What's the price of a 3-unit bridge?",
+        "Is a dental bridge covered by insurance?"
+      ],
+      "price_range": { "low": 3649, "high": 3649, "note": "starting price for a typical 3-unit bridge; + dental lab fee" },
+      "insurance_coverage": "supplementary — may or may not be covered"
+    },
+    {
+      "id": "bridge_recementation",
+      "category": "Prosthodontics",
+      "question_patterns": [
+        "How much to recement a bridge?",
+        "What's the price of fixing a loose bridge?"
+      ],
+      "price_range": { "low": 226, "high": 453 },
+      "insurance_coverage": "basic — typically covered to plan maximum"
+    },
+    {
+      "id": "tooth_extraction",
+      "category": "Oral Surgery",
+      "question_patterns": [
+        "How much does a tooth extraction cost?",
+        "What's the price of pulling a tooth?",
+        "How much to remove a tooth?"
+      ],
+      "price_range": { "low": 228, "high": 328, "note": "depends on whether surgical flap/sectioning is required" },
+      "insurance_coverage": "basic — typically covered to plan maximum"
+    },
+    {
+      "id": "wisdom_tooth_removal",
+      "category": "Oral Surgery",
+      "question_patterns": [
+        "How much does wisdom tooth removal cost?",
+        "What's the price of extracting wisdom teeth?"
+      ],
+      "price_range": { "low": 340, "high": 731, "unit_note": "per tooth", "note": "depends on impaction difficulty" },
+      "insurance_coverage": "basic — typically covered to plan maximum"
+    },
+    {
+      "id": "incision_drainage",
+      "category": "Oral Surgery",
+      "question_patterns": [
+        "How much does it cost to drain an abscess?",
+        "What's the price of incision and drainage?"
+      ],
+      "price_range": { "low": 140, "high": 140 },
+      "insurance_coverage": "basic — typically covered to plan maximum",
+      "triage_flag": true
+    },
+    {
+      "id": "dental_implant",
+      "category": "Oral Surgery",
+      "question_patterns": [
+        "How much does a dental implant cost?",
+        "What's the price of getting an implant?",
+        "Is a dental implant covered by insurance?"
+      ],
+      "price_range": { "low": 4197, "high": 4197, "note": "starting price including surgical placement and crown; may increase with extraction, bone/gum grafting, sinus lift, or computer-guided surgery; zirconia implants cost more" },
+      "insurance_coverage": "supplementary — may or may not be covered"
+    },
+    {
+      "id": "full_arch_implants",
+      "category": "Oral Surgery",
+      "question_patterns": [
+        "How much do All-on-4 implants cost?",
+        "What's the price of a full arch of implants?",
+        "How much for full mouth implants?"
+      ],
+      "price_range": { "low": 26000, "high": 31000, "unit_note": "per arch", "note": "includes consultations, imaging, extractions if needed, implant placement, and prosthesis" },
+      "insurance_coverage": "supplementary — may or may not be covered"
+    },
+    {
+      "id": "orthodontics_general",
+      "category": "Orthodontics",
+      "question_patterns": [
+        "How much do braces cost?",
+        "What's the price of Invisalign?",
+        "How much does orthodontic treatment cost?",
+        "Can I pay for braces in installments?"
+      ],
+      "price_range": { "low": 4000, "high": 4000, "note": "starting price; varies by case difficulty; treatment usually runs 6-24 months and payment plans are commonly available" },
+      "insurance_coverage": "sometimes covered under enhanced/orthodontic plans"
+    },
+    {
+      "id": "retainers",
+      "category": "Orthodontics",
+      "question_patterns": [
+        "How much does a retainer cost?",
+        "What's the price of a permanent retainer?",
+        "How much for a removable retainer?"
+      ],
+      "price_range": { "low": 282, "high": 415, "unit_note": "per arch" },
+      "insurance_coverage": "sometimes covered — check plan"
+    },
+    {
+      "id": "sedation",
+      "category": "General Services",
+      "question_patterns": [
+        "How much does sedation cost?",
+        "What's the price of nitrous oxide / laughing gas?",
+        "How much for oral sedation at the dentist?"
+      ],
+      "price_range": { "low": 129, "high": 309, "note": "billed by time; nitrous oxide starts at $129 (30 min), oral conscious sedation starts at $249" },
+      "insurance_coverage": "basic — typically covered to plan maximum"
+    },
+    {
+      "id": "teeth_whitening",
+      "category": "General Services",
+      "question_patterns": [
+        "How much does teeth whitening cost?",
+        "What's the price of in-office whitening?",
+        "How much for take-home whitening trays?",
+        "Is whitening covered by insurance?"
+      ],
+      "price_range": { "low": 350, "high": 666, "note": "in-office ~$666 (75 min); take-home trays with gel ~$350" },
+      "insurance_coverage": "cosmetic — typically NOT covered"
+    }
+  ],
+
+  "category_index": {
+    "Diagnosis": ["new_patient_exam", "emergency_exam", "digital_xrays", "cbct_scan"],
+    "Prevention": ["teeth_cleaning", "fluoride_treatment", "night_guard", "sports_mouth_guard"],
+    "Restorative": ["fillings", "porcelain_inlay_onlay", "dental_crown", "veneers"],
+    "Endodontics": ["root_canal", "root_canal_retreatment"],
+    "Periodontics": ["gum_graft", "bone_graft"],
+    "Prosthodontics": ["dentures_full", "dentures_partial", "denture_repair", "denture_reline", "dental_bridge", "bridge_recementation"],
+    "Oral Surgery": ["tooth_extraction", "wisdom_tooth_removal", "incision_drainage", "dental_implant", "full_arch_implants"],
+    "Orthodontics": ["orthodontics_general", "retainers"],
+    "General Services": ["sedation", "teeth_whitening"]
+  },
+
+  "fallback_response": "I don't have pricing for that specific procedure in my knowledge base. Costs can vary based on your specific case, so I'd recommend booking a consultation — the dentist can give you a personalized quote and check what your insurance plan covers.",
+
+  "escalate_to_human_if": [
+    "Patient describes acute pain, swelling, trauma, or bleeding",
+    "Patient asks for a guaranteed final price rather than an estimate",
+    "Patient disputes a quoted price or a past bill",
+    "Patient asks about a procedure combination requiring a custom treatment plan",
+    "Patient asks about insurance claim disputes or direct billing eligibility specifics"
+  ]
+}

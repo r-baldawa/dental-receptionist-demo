@@ -1,0 +1,49 @@
+flowchart TB
+    subgraph Agent[Chat / Voice Agent]
+        A1[Booking Flow<br/>New + Existing]
+        A2[Registration Flow<br/>New Patient Pre-fill]
+        A3[Emergency Triage]
+        A4[FAQ / Side-Intent Handler]
+    end
+
+    subgraph DB[Shared Patient DB]
+        D1[(Patients)]
+        D2[(Consents)]
+        D3[(Appointments)]
+        D4[(Payments / Receivables)]
+        D5[(Audit Log)]
+    end
+
+    subgraph WebApp[Receptionist Web App]
+        W1[Check-In & Consent<br/>Capture View]
+        W2[Receivables<br/>Follow-Up View]
+    end
+
+    subgraph External[External Services]
+        G[Gmail]
+        C[Google Calendar]
+    end
+
+    subgraph Knowledge[Knowledge Source]
+        KB[Pricing FAQ KB<br/>Atlas Dental]
+    end
+
+    A1 -->|lookup by email/phone<br/>→ new vs existing| D1
+    A1 -->|create| D3
+    A1 -->|invite| C
+    A1 -->|confirmation email| G
+    A2 -->|lookup by email/phone<br/>pre-fill, pending consent| D1
+    A2 -->|pending consent records| D2
+    A3 -->|emergency alert email| G
+    A3 -->|log| D5
+    A4 -.->|reads, no write| D1
+    A4 -.->|reads pricing/cost answers| KB
+
+    D1 --> W1
+    D2 --> W1
+    W1 -->|patient signs in person| D2
+    W1 -->|flips status to active| D1
+
+    D4 --> W2
+    W2 -->|select patients, send reminder| G
+    W2 -->|log send| D5
